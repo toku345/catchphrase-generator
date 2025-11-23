@@ -1,0 +1,60 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Catchphrase Generator API using Amazon Bedrock Nova micro
+
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 512
+    Runtime: python3.13
+    Architectures:
+      - x86_64
+    Environment:
+      Variables:
+        AWS_REGION_BEDROCK: us-east-1
+        BEDROCK_MODEL_ID: us.amazon.nova-micro-v1:0
+
+Resources:
+  CatchphraseGeneratorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: handler.lambda_handler
+      Description: Generate catchphrases using Amazon Bedrock Nova micro
+      Policies:
+        - Statement:
+            - Sid: BedrockInvokePolicy
+              Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+                - bedrock:InvokeModelWithResponseStream
+              Resource:
+                - !Sub 'arn:aws:bedrock:*:${AWS::AccountId}:inference-profile/*'
+                - 'arn:aws:bedrock:*::foundation-model/*'
+      Events:
+        GenerateApi:
+          Type: Api
+          Properties:
+            Path: /generate
+            Method: post
+            RestApiId: !Ref CatchphraseApi
+
+  CatchphraseApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: Prod
+      Cors:
+        AllowMethods: "'POST, OPTIONS'"
+        AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+        AllowOrigin: "'*'"
+
+Outputs:
+  CatchphraseApi:
+    Description: "API Gateway endpoint URL for Prod stage"
+    Value: !Sub "https://${CatchphraseApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/generate/"
+  CatchphraseGeneratorFunction:
+    Description: "Catchphrase Generator Lambda Function ARN"
+    Value: !GetAtt CatchphraseGeneratorFunction.Arn
+  CatchphraseGeneratorFunctionIamRole:
+    Description: "Implicit IAM Role created for Catchphrase Generator function"
+    Value: !GetAtt CatchphraseGeneratorFunctionRole.Arn
