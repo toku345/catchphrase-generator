@@ -6,6 +6,10 @@ import boto3
 from botocore.exceptions import ClientError
 
 
+class BedrockClientError(Exception):
+    """Raised when Amazon Bedrock catchphrase generation fails."""
+
+
 class BedrockClient:
     """Client for Amazon Bedrock Nova micro model"""
 
@@ -39,7 +43,7 @@ class BedrockClient:
             Generated catchphrase string
 
         Raises:
-            ClientError: If Bedrock API call fails
+            BedrockClientError: If Bedrock API call fails
         """
         prompt = self._build_prompt(starting_word, background, style)
 
@@ -68,8 +72,8 @@ class BedrockClient:
 
             return catchphrase.strip()
 
-        except ClientError as e:
-            raise Exception(f"Failed to generate catchphrase: {str(e)}")
+        except ClientError as err:
+            raise BedrockClientError("Failed to generate catchphrase") from err
 
     def _build_prompt(
         self,
