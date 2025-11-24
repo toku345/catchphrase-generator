@@ -1,5 +1,8 @@
 from typing import Optional
 
+# Maximum length for background field in characters
+MAX_BACKGROUND_LENGTH = 2048
+
 
 class CatchphraseRequest:
     """Catchphrase generation request model"""
@@ -28,8 +31,22 @@ class CatchphraseRequest:
         Validate request parameters
         Returns: (is_valid, error_message)
         """
-        if not self.background:
+        # Check if background is provided
+        if self.background is None:
             return False, "background is required"
+
+        # Check if background is a string
+        if not isinstance(self.background, str):
+            return False, "background must be a string"
+
+        # Check if background is not empty after stripping whitespace
+        if not self.background.strip():
+            return False, "background cannot be empty"
+
+        # Check if background length is within limits
+        if len(self.background) > MAX_BACKGROUND_LENGTH:
+            return False, f"background exceeds maximum length of {MAX_BACKGROUND_LENGTH} characters"
+
         return True, None
 
 
