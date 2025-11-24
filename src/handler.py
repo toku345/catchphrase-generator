@@ -8,6 +8,9 @@ from models import CatchphraseRequest, CatchphraseResponse
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
+# Initialize Bedrock client outside handler for reuse across invocations
+bedrock_client = BedrockClient()
+
 
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """
@@ -36,7 +39,6 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             return create_response(400, {"error": error_message})
 
         # Generate catchphrase
-        bedrock_client = BedrockClient()
         catchphrase = bedrock_client.generate_catchphrase(
             starting_word=request.starting_word,
             background=request.background,
