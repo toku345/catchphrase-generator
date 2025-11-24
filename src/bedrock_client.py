@@ -67,13 +67,61 @@ class BedrockClient:
                 body=json.dumps(request_body)
             )
 
-            response_body = json.loads(response["body"].read())
-            catchphrase = response_body["output"]["message"]["content"][0]["text"]
+            # Parse response with defensive checks
+            try:
+                response_body = json.loads(response["body"].read())
+            except (json.JSONDecodeError, KeyError, TypeError) as err:
+                raise BedrockClientError(
+                    f"Failed to decode Bedrock response: {err}"
+                ) from err
+
+            # Validate response structure
+            if not isinstance(response_body, dict):
+                raise BedrockClientError(
+                    f"Invalid response type: expected dict, got {type(response_body).__name__}"
+                )
+
+            output = response_body.get("output")
+            if not isinstance(output, dict):
+                raise BedrockClientError(
+                    f"Missing or invalid 'output' in response: {response_body}"
+                )
+
+            message = output.get("message")
+            if not isinstance(message, dict):
+                raise BedrockClientError(
+                    f"Missing or invalid 'message' in output: {output}"
+                )
+
+            content = message.get("content")
+            if not isinstance(content, list) or not content:
+                raise BedrockClientError(
+                    f"Missing or invalid 'content' in message: {message}"
+                )
+
+            first_content = content[0]
+            if not isinstance(first_content, dict):
+                raise BedrockClientError(
+                    f"Invalid content item type: expected dict, got {type(first_content).__name__}"
+                )
+
+            catchphrase = first_content.get("text")
+            if not isinstance(catchphrase, str):
+                raise BedrockClientError(
+                    f"Missing or invalid 'text' in content: {first_content}"
+                )
 
             return catchphrase.strip()
 
         except ClientError as err:
             raise BedrockClientError("Failed to generate catchphrase") from err
+        except BedrockClientError:
+            # Re-raise our own exceptions
+            raise
+        except (KeyError, IndexError, TypeError, ValueError) as err:
+            raise BedrockClientError(
+                f"Unexpected response structure: {err}"
+            ) from err
 
     def _build_prompt(
         self,

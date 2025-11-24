@@ -64,14 +64,12 @@ class TestLambdaHandler:
         assert "error" in body
         assert "background" in body["error"]
 
-    @patch("handler.BedrockClient")
-    def test_successful_generation(self, mock_bedrock_class):
+    @patch("handler.bedrock_client")
+    def test_successful_generation(self, mock_client):
         """Test successful catchphrase generation"""
         # Setup mock
-        mock_client = MagicMock()
         mock_client.generate_catchphrase.return_value = "未来を創る、今日から始まる"
         mock_client.model_id = "us.amazon.nova-micro-v1:0"
-        mock_bedrock_class.return_value = mock_client
 
         event = {
             "body": json.dumps({
@@ -97,13 +95,11 @@ class TestLambdaHandler:
             style="前向き"
         )
 
-    @patch("handler.BedrockClient")
-    def test_bedrock_error(self, mock_bedrock_class):
+    @patch("handler.bedrock_client")
+    def test_bedrock_error(self, mock_client):
         """Test handler when Bedrock raises an error"""
         # Setup mock to raise exception
-        mock_client = MagicMock()
         mock_client.generate_catchphrase.side_effect = Exception("Bedrock error")
-        mock_bedrock_class.return_value = mock_client
 
         event = {
             "body": json.dumps({
