@@ -63,8 +63,8 @@ def lambda_handler(event: Dict[str, Any], _context: Any) -> Dict[str, Any]:
 
     except json.JSONDecodeError:
         return create_response(400, {"error": "Invalid JSON in request body"})
-    except Exception as e:
-        logger.error(f"Error: {str(e)}", exc_info=True)
+    except Exception as exc:
+        logger.error("Unexpected error while handling request: %s", exc, exc_info=True)
         return create_response(500, {"error": "Internal server error"})
 
 
