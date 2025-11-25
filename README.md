@@ -1,0 +1,257 @@
+# Catchphrase Generator
+
+Amazon Bedrock Nova microを使用したキャッチフレーズ生成APIです。
+
+## 概要
+
+- `/generate` エンドポイントにテキストをPOSTすると、Nova microがキャッチフレーズを生成します
+- パラメータとして以下を指定できます：
+  - `starting_word`: キャッチフレーズの冒頭の単語（オプション）
+  - `background`: キャッチフレーズの背景・コンテキスト（必須）
+  - `style`: スタイル・トーン（オプション）
+
+## 技術スタック
+
+- **言語**: Python 3.13
+- **パッケージマネージャ**: uv
+- **テストフレームワーク**: pytest
+- **デプロイ**: AWS SAM
+- **実行環境**: AWS Lambda + API Gateway
+- **LLM**: Amazon Bedrock Nova micro
+
+## 前提条件
+
+以下のツールがインストールされている必要があります：
+
+1. **Python 3.13+**
+2. **uv**: Python パッケージマネージャ
+   ```bash
+   curl -LsSf https://astral.sh/uv/install.sh | sh
+   ```
+3. **AWS CLI**: AWS認証情報の設定に使用（バージョン 2.32.0以降）
+   ```bash
+   brew install awscli
+   ```
+4. **AWS SAM CLI**: サーバーレスアプリケーションのビルド・デプロイツール
+   ```bash
+   brew install aws-sam-cli
+   ```
+5. **Docker**: SAM CLIのローカル実行に必要
+   ```bash
+   brew install --cask docker
+   ```
+
+## セットアップ
+
+### 1. リポジトリのクローン
+
+```bash
+git clone <repository-url>
+cd catchphrase-generator
+```
+
+### 2. 依存関係のインストール
+
+```bash
+uv sync --all-extras
+```
+
+### 3. AWS認証情報の設定
+
+AWS CLIの `aws login` コマンドを使用して、ブラウザベースで認証します：
+
+```bash
+aws login
+```
+
+このコマンドは：
+- ブラウザが自動的に開き、AWSコンソールの認証情報でログイン
+- 一時的な認証情報を自動生成し、最大12時間有効
+- 15分ごとに自動更新されるため、再ログイン不要
+- 長期的なアクセスキーを保存する必要がなく、セキュアな開発環境を実現
+
+**注意**: AWS CLI バージョン 2.32.0以降が必要です。バージョン確認：
+```bash
+aws --version
+```
+
+**必要なIAM権限**:
+- IAMユーザーには `SignInLocalDevelopmentAccess` マネージドポリシーが必要です
+- または、以下のアクションを含むカスタムポリシー：
+  - `signin:AuthorizeOAuth2Access`
+  - `signin:CreateOAuth2Token`
+
+### 4. Bedrockモデルへのアクセス許可
+
+Amazon Bedrock Nova microモデルを使用するため、AWSコンソールで以下の手順を実行してください：
+
+1. [Amazon Bedrock コンソール](https://console.aws.amazon.com/bedrock/)を開く
+2. 左側のメニューから「Model access」を選択
+3. 「Manage model access」ボタンをクリック
+4. 「Amazon Nova Micro」にチェックを入れる
+5. 「Request model access」をクリック
+
+## ローカル実行
+
+### ビルド
+
+```bash
+sam build --use-container
+```
+
+**注意**: `--use-container` オプションを使用すると、DockerコンテナでPython 3.13環境をビルドします。Dockerデーモンが起動していることを確認してください。
+
+### ローカルAPIサーバーの起動
+
+```bash
+sam local start-api
+```
+
+APIサーバーは `http://localhost:3000` で起動します。
+
+### APIのテスト
+
+curlでテスト：
+
+```bash
+curl -X POST http://localhost:3000/generate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "starting_word": "未来",
+    "background": "テクノロジー企業の新製品発表",
+    "style": "前向きで革新的"
+  }'
+```
+
+レスポンス例：
+
+```json
+{
+  "catchphrase": "未来を創る、今日から始まる革新の旅",
+  "model_used": "us.amazon.nova-micro-v1:0"
+}
+```
+
+### パラメータの詳細
+
+#### リクエストパラメータ
+
+| パラメータ | 型 | 必須 | 説明 |
+|-----------|-----|------|------|
+| `background` | string | ○ | キャッチフレーズの背景・コンテキスト |
+| `starting_word` | string | × | キャッチフレーズの冒頭に使用する単語 |
+| `style` | string | × | スタイルやトーン（例: "前向き", "落ち着いた"） |
+
+#### レスポンス
+
+| フィールド | 型 | 説明 |
+|-----------|-----|------|
+| `catchphrase` | string | 生成されたキャッチフレーズ |
+| `model_used` | string | 使用したBedrockモデルID |
+
+## テスト
+
+```bash
+# uvで管理されているpytestを実行
+uv run pytest
+
+# カバレッジ付き
+uv run pytest --cov=src
+```
+
+全9テストが成功することを確認済みです。
+
+## AWSへのデプロイ
+
+### 初回デプロイ
+
+```bash
+sam deploy --guided
+```
+
+対話形式で以下の情報を入力します：
+- Stack Name: アプリケーション名（例: catchphrase-generator）
+- AWS Region: デプロイ先リージョン（例: ap-northeast-1）
+- Confirm changes before deploy: Y
+- Allow SAM CLI IAM role creation: Y
+- Save arguments to configuration file: Y
+
+### 2回目以降のデプロイ
+
+```bash
+sam build --use-container
+sam deploy
+```
+
+### デプロイ後の動作確認
+
+デプロイが完了すると、API GatewayのエンドポイントURLが出力されます：
+
+```bash
+curl -X POST https://<api-id>.execute-api.ap-northeast-1.amazonaws.com/Prod/generate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "background": "新しいカフェのオープン",
+    "starting_word": "香り",
+    "style": "温かみのある"
+  }'
+```
+
+## プロジェクト構造
+
+```
+catchphrase-generator/
+├── template.yaml           # SAM テンプレート
+├── samconfig.toml         # SAM CLI 設定
+├── pyproject.toml         # uv プロジェクト設定
+├── .env.example           # 環境変数サンプル
+├── README.md              # このファイル
+├── src/
+│   ├── __init__.py
+│   ├── handler.py         # Lambda関数ハンドラー
+│   ├── bedrock_client.py  # Bedrock Novaクライアント
+│   ├── models.py          # リクエスト/レスポンスモデル
+│   └── requirements.txt   # Lambda用依存関係
+└── tests/
+    ├── __init__.py
+    └── test_handler.py    # テストコード
+```
+
+## トラブルシューティング
+
+### Dockerが起動していない
+
+SAM CLIはDockerを使用してLambda環境をエミュレートします。以下のエラーが出る場合、Dockerを起動してください：
+
+```
+Error: Running AWS SAM projects locally requires a container runtime.
+```
+
+**対処法**:
+```bash
+# Dockerの起動確認
+docker ps
+
+# OrbStackまたはDocker Desktopを起動
+```
+
+### ビルドエラー
+
+**エラー**: `Binary validation failed for python`
+
+**対処法**: `--use-container` オプションを使用してDockerコンテナ内でビルドしてください：
+```bash
+sam build --use-container
+```
+
+### Bedrockモデルへのアクセスエラー
+
+**エラー**: `AccessDeniedException`
+
+**対処法**：
+1. AWSコンソールでBedrockモデルへのアクセスリクエストが承認されているか確認
+2. IAMロールに適切なBedrock権限があるか確認
+
+## ライセンス
+
+MIT
