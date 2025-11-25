@@ -23,7 +23,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     Returns:
         API Gateway proxy response
     """
-    logger.info(f"Received event: {json.dumps(event)}")
+    logger.info("Received event with keys: %s", list(event.keys()))
 
     try:
         # Parse request body
