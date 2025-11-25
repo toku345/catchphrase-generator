@@ -12,7 +12,7 @@ logger.setLevel(logging.INFO)
 bedrock_client = BedrockClient()
 
 
-def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def lambda_handler(event: Dict[str, Any], _context: Any) -> Dict[str, Any]:
     """
     Lambda function handler for catchphrase generation
 
