@@ -31,6 +31,12 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             return create_response(400, {"error": "Request body is required"})
 
         body = json.loads(event["body"])
+        if not isinstance(body, dict):
+            return create_response(
+                400,
+                {"error": "Request body must be a JSON object"}
+            )
+
         request = CatchphraseRequest.from_dict(body)
 
         # Validate request
